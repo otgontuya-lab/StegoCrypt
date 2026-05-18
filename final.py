@@ -158,7 +158,7 @@ def decode_image(stego: str, password: str,
                 cipher = text.split(END_MARKER)[0]
                 return decrypt_aes_gcm(cipher, password)
 
-    raise ValueError("Нууц мэдээлэл олдсонгүй эсвэл зураг өөрчлөгдсөн.")
+    raise ValueError("Нууц мэдээлэл олдсонгүй.")
 
 
 def get_capacity_bytes(path: str) -> int:
@@ -629,14 +629,16 @@ class StegoCrypt:
                 self.dec_result.insert(END, secret)
                 self.dec_result.config(state="disabled")
                 self._set_status(
-                    f"✓ Decode амжилттай  •  {len(secret)} тэмдэгт", GREEN
+                    f"✓ Decode амжилттай.  {len(secret)} тэмдэгт", GREEN
                 )
                 messagebox.showinfo("Амжилттай",
                                     "Нууц мэдээлэл амжилттай гарлаа!")
             except Exception as e:
-                msg = str(e)
-                if "tag" in msg.lower() or "invalid" in msg.lower():
-                    msg = "Password буруу байна!"
+                msg = str(e).strip()
+                
+                if not msg or "tag" in msg.lower() or "invalid" in msg.lower():
+                     msg = "Password буруу байна!"
+                     
                 self._set_status(msg, RED)
                 messagebox.showerror("Алдаа", msg)
 
