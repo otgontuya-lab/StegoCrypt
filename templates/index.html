@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StegoCrypt v3.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:     #0A0C10;
+    --card:   #0F1318;
+    --input:  #161B22;
+    --border: #21262D;
+    --accent: #4ECDC4;
+    --green:  #06D6A0;
+    --red:    #EF233C;
+    --amber:  #FFB703;
+    --purple: #A78BFA;
+    --blue:   #60A5FA;
+    --txt:    #E2E8F0;
+    --muted:  #64748B;
+    --glow:   rgba(78,205,196,.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--txt);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px
+    );
+    pointer-events: none; z-index: 9999;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(78,205,196,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(78,205,196,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  header {
+    position: relative; z-index: 10;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(78,205,196,.06) 0%, transparent 100%);
+    display: flex; align-items: center; gap: 16px;
+  }
+
+  .logo { font-family: 'Share Tech Mono', monospace; font-size: 22px; color: var(--accent); letter-spacing: 2px; text-shadow: 0 0 20px var(--glow); }
+  .logo span { color: var(--txt); }
+  .tagline { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-left: auto; }
+
+  main { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 40px 24px 60px; }
+
+  /* ── Format Selector ── */
+  .format-bar {
+    display: flex; gap: 8px; margin-bottom: 24px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 8px; flex-wrap: wrap;
+  }
+  .fmt-btn {
+    flex: 1; min-width: 100px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); border-radius: 8px; padding: 10px 14px;
+    cursor: pointer; font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; letter-spacing: 1px; text-align: center;
+    transition: all .2s; display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+  }
+  .fmt-btn .fmt-icon { font-size: 20px; }
+  .fmt-btn .fmt-badge {
+    font-size: 9px; padding: 2px 6px; border-radius: 4px;
+    background: rgba(100,116,139,.2); color: var(--muted);
+  }
+  .fmt-btn:hover { border-color: var(--accent); color: var(--txt); }
+  .fmt-btn.active { background: rgba(78,205,196,.12); border-color: var(--accent); color: var(--accent); }
+  .fmt-btn.active .fmt-badge { background: rgba(78,205,196,.2); color: var(--accent); }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tab-btn {
+    background: none; border: none; color: var(--muted);
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
+    padding: 12px 20px; cursor: pointer; position: relative;
+    text-transform: uppercase; letter-spacing: 1px; transition: color .2s;
+  }
+  .tab-btn::after {
+    content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px;
+    background: var(--accent); transform: scaleX(0); transition: transform .25s ease;
+  }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active::after { transform: scaleX(1); }
+
+  /* ── Panel ── */
+  .panel { display: none; animation: fadeUp .25s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px 24px; margin-bottom: 16px;
+  }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; }
+
+  /* ── Method info badge ── */
+  .method-info {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(78,205,196,.08); border: 1px solid rgba(78,205,196,.2);
+    border-radius: 6px; padding: 6px 12px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent);
+    margin-bottom: 0;
+  }
+
+  /* ── Dropzone ── */
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: 10px;
+    padding: 32px; text-align: center; cursor: pointer;
+    transition: border-color .2s, background .2s; position: relative;
+  }
+  .dropzone:hover, .dropzone.drag-over { border-color: var(--accent); background: rgba(78,205,196,.04); }
+  .dropzone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-icon { font-size: 36px; display: block; margin-bottom: 10px; }
+  .drop-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .drop-sub { font-size: 11px; color: var(--muted); }
+
+  /* ── Preview ── */
+  .preview-row { display: none; gap: 16px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .preview-row.show { display: flex; }
+  .thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+  .file-icon-large { font-size: 48px; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; background: var(--input); border-radius: 6px; border: 1px solid var(--border); }
+  .img-meta { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--muted); line-height: 1.8; }
+
+  /* ── Cap bar ── */
+  .cap-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .cap-track { height: 4px; background: var(--input); border-radius: 2px; overflow: hidden; }
+  .cap-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width .3s, background .3s; width: 0%; }
+
+  /* ── Inputs ── */
+  input[type=password], input[type=text], input[type=number], textarea {
+    width: 100%; background: var(--input); border: 1px solid var(--border);
+    color: var(--txt); border-radius: 8px; padding: 12px 14px;
+    font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    outline: none; transition: border-color .2s;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { min-height: 110px; resize: vertical; }
+  .field-group { display: flex; gap: 8px; }
+  .field-group input { flex: 1; }
+  .eye-btn {
+    background: var(--input); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 8px; padding: 0 14px; cursor: pointer; font-size: 14px; transition: color .2s;
+  }
+  .eye-btn:hover { color: var(--txt); }
+
+  /* ── Options ── */
+  .opt-row { display: flex; flex-direction: column; gap: 12px; }
+  .check-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; }
+  .check-label input[type=checkbox] { display: none; }
+  .custom-check {
+    width: 18px; height: 18px; border: 2px solid var(--border); border-radius: 4px;
+    transition: all .2s; flex-shrink: 0; position: relative;
+  }
+  .check-label input:checked + .custom-check { background: var(--accent); border-color: var(--accent); }
+  .check-label input:checked + .custom-check::after {
+    content: '✓'; position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center; color: #000; font-size: 11px; font-weight: 900;
+  }
+  .seed-row {
+    display: none; align-items: center; gap: 10px; padding: 10px 14px;
+    background: var(--input); border-radius: 8px; font-size: 12px; color: var(--muted);
+  }
+  .seed-row.show { display: flex; }
+  .seed-row input { max-width: 90px; padding: 6px 10px; }
+
+  .char-count { font-size: 11px; color: var(--muted); text-align: right; margin-top: 6px; }
+
+  /* ── JPEG quality slider ── */
+  .quality-row { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--muted); }
+  .quality-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .quality-val { font-family: 'Share Tech Mono', monospace; color: var(--accent); min-width: 32px; }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
+    letter-spacing: .5px; transition: opacity .15s, transform .1s, box-shadow .2s;
+    text-transform: uppercase; display: flex; align-items: center; gap: 8px;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--accent); color: #0A0C10; box-shadow: 0 0 20px rgba(78,205,196,.3); }
+  .btn-primary:hover { box-shadow: 0 0 30px rgba(78,205,196,.5); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--txt); border-color: var(--muted); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .loader {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(10,12,16,.4); border-top-color: #0A0C10;
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Download banner ── */
+  .dl-banner {
+    background: linear-gradient(135deg, rgba(6,214,160,.1), rgba(78,205,196,.1));
+    border: 1px solid var(--green); border-radius: 8px; padding: 16px 20px;
+    display: none; align-items: center; justify-content: space-between;
+    gap: 16px; animation: fadeUp .3s ease; margin-top: 20px;
+  }
+  .dl-banner.show { display: flex; }
+  .dl-info { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--green); line-height: 1.8; }
+
+  /* ── Result box ── */
+  .result-box {
+    background: var(--input); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    color: var(--green); white-space: pre-wrap; word-break: break-all;
+    max-height: 200px; overflow-y: auto; line-height: 1.7;
+  }
+
+  /* ── Toast ── */
+  #toast { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 8px; }
+  .toast-item {
+    padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 10px;
+    animation: slideIn .3s ease; max-width: 320px;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  .toast-item.success { background: rgba(6,214,160,.15); border: 1px solid var(--green); color: var(--green); }
+  .toast-item.error   { background: rgba(239,35,60,.15);  border: 1px solid var(--red);   color: var(--red);   }
+  .toast-item.info    { background: rgba(78,205,196,.12); border: 1px solid var(--accent); color: var(--accent); }
+  .toast-item.warn    { background: rgba(255,183,3,.12);  border: 1px solid var(--amber);  color: var(--amber); }
+
+  /* ── Status bar ── */
+  #statusbar {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 28px;
+    background: var(--card); border-top: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 20px; gap: 8px;
+    z-index: 100; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted);
+  }
+  #statusbar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background .3s; }
+
+  @media (max-width: 600px) {
+    header { padding: 16px; flex-wrap: wrap; }
+    .tagline { display: none; }
+    main { padding: 20px 12px; }
+    .card { padding: 18px; }
+    .fmt-btn { min-width: 80px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🔐 Stego<span>Crypt</span></div>
+  <div class="tagline">AES-256-GCM · MULTI-FORMAT STEGANOGRAPHY · v3.1</div>
+</header>
+
+<main>
+
+  <!-- Format Selector -->
+  <div class="format-bar" id="format-bar">
+    <button class="fmt-btn active" onclick="selectFormat('png')" id="fmt-png">
+      <span class="fmt-icon">🖼️</span>
+      PNG/BMP
+      <span class="fmt-badge">LSB</span>
+    </button>
+    <button class="fmt-btn" onclick="selectFormat('jpeg')" id="fmt-jpeg">
+      <span class="fmt-icon">📸</span>
+      JPEG
+      <span class="fmt-badge">DCT</span>
+    </button>
+    <button class="fmt-btn" onclick="selectFormat('zip')" id="fmt-zip">
+      <span class="fmt-icon">🗜️</span>
+      ZIP
+      <span class="fmt-badge">Comment</span>
+    </button>
+    <button class="fmt-btn" onclick="selectFormat('tar')" id="fmt-tar">
+      <span class="fmt-icon">📦</span>
+      TAR
+      <span class="fmt-badge">PAX Header</span>
+    </button>
+    <button class="fmt-btn" onclick="selectFormat('video')" id="fmt-video">
+      <span class="fmt-icon">🎬</span>
+      VIDEO
+      <span class="fmt-badge">Audio LSB</span>
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('encode')">🔒 Encode</button>
+    <button class="tab-btn"        onclick="switchTab('decode')">🔓 Decode</button>
+  </div>
+
+  <!-- ═══════════════════ ENCODE PANEL ═══════════════════ -->
+  <div class="panel active" id="panel-encode">
+
+    <!-- File upload -->
+    <div class="card">
+      <div class="section-label">📁 Эх файл · <span id="enc-file-label">PNG зураг</span></div>
+      <div class="dropzone" id="enc-drop">
+        <input type="file" id="enc-file" accept="image/png,image/bmp">
+        <span class="drop-icon" id="enc-drop-icon">🖼️</span>
+        <div class="drop-title" id="enc-drop-title">PNG зураг чирж тавих / дарж сонгох</div>
+        <div class="drop-sub" id="enc-drop-sub">PNG · BMP  •  Гаралт нь PNG форматтай</div>
+      </div>
+      <div class="preview-row" id="enc-preview">
+        <div id="enc-thumb-wrap"></div>
+        <div class="img-meta" id="enc-meta"></div>
+        <div style="flex:1">
+          <div class="cap-row">
+            <span>Багтаамжийн ашиглалт</span>
+            <span id="enc-pct">0%</span>
+          </div>
+          <div class="cap-track"><div class="cap-fill" id="enc-bar"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Password -->
+    <div class="card">
+      <div class="section-label">🔑 Нууц үг</div>
+      <div class="field-group">
+        <input type="password" id="enc-pw" placeholder="Password оруулна уу…">
+        <button class="eye-btn" onclick="togglePw('enc-pw')">👁</button>
+      </div>
+    </div>
+
+    <!-- Secret message -->
+    <div class="card">
+      <div class="section-label">✉️ Нууц текст</div>
+      <textarea id="enc-msg" placeholder="Нуух мэдээллээ энд бичнэ үү…"></textarea>
+      <div class="char-count"><span id="enc-chars">0</span> тэмдэгт</div>
+    </div>
+
+    <!-- Options -->
+    <div class="card" id="enc-opts-card">
+      <div class="section-label">⚙️ Тохиргоо</div>
+      <div id="enc-opts-content">
+        <!-- PNG: random embedding -->
+        <div id="enc-opt-lsb" class="opt-row">
+          <label class="check-label">
+            <input type="checkbox" id="enc-rand" onchange="toggleSeed('enc-rand','enc-seed-row')">
+            <span class="custom-check"></span>
+            Random embedding (steganalysis-д тэсвэртэй)
+          </label>
+          <div class="seed-row" id="enc-seed-row">
+            <span>Seed:</span>
+            <input type="number" id="enc-seed" value="42">
+            <span style="font-size:10px">(decode-д ижил ашиглана)</span>
+          </div>
+        </div>
+        <!-- JPEG: quality -->
+        <div id="enc-opt-jpeg" style="display:none" class="opt-row">
+          <div class="quality-row">
+            <span>JPEG чанар:</span>
+            <input type="range" id="enc-quality" min="60" max="95" value="85" oninput="document.getElementById('enc-qval').textContent=this.value">
+            <span class="quality-val" id="enc-qval">85</span>
+          </div>
+          <div style="font-size:11px; color:var(--muted); margin-top:4px;">
+            ⚠️ Encode хийсний дараа JPEG дахин хадгалах эсвэл compress хийхгүй байхыг анхаарна уу
+          </div>
+        </div>
+        <!-- ZIP/TAR: no options -->
+        <div id="enc-opt-archive" style="display:none">
+          <div class="method-info" id="enc-method-info">ℹ️ Стандарт ZIP comment талбарт AES-256 шифрлэсэн өгөгдлийг нуух болно</div>
+        </div>
+        <!-- VIDEO: info -->
+        <div id="enc-opt-video" style="display:none">
+          <div class="method-info">🎬 Видеоны аудио track-ийн PCM sample-д LSB аргаар нуух болно.<br>
+          Гаралт нь MKV (video stream: lossless copy, audio: PCM 16-bit).<br>
+          ⚠️ ffmpeg серверт суусан байх шаардлагатай.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action -->
+    <div class="btn-row">
+      <button class="btn btn-primary" id="enc-btn" onclick="doEncode()">🔒 Encode</button>
+      <button class="btn btn-ghost" onclick="clearEncode()">Цэвэрлэх</button>
+    </div>
+
+    <!-- Download banner -->
+    <div class="dl-banner" id="enc-dl">
+      <div class="dl-info" id="enc-dl-info"></div>
+      <button class="btn btn-primary" id="enc-dl-btn">⬇ Татаж авах</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ DECODE PANEL ═══════════════════ -->
+  <div class="panel" id="panel-decode">
+
+    <!-- File upload -->
+    <div class="card">
+      <div class="section-label">📁 Stego файл · <span id="dec-file-label">PNG зураг</span></div>
+      <div class="dropzone" id="dec-drop">
+        <input type="file" id="dec-file" accept="image/png,image/bmp">
+        <span class="drop-icon" id="dec-drop-icon">🔍</span>
+        <div class="drop-title" id="dec-drop-title">Нууц мэдээлэл агуулсан зургийг оруулна уу</div>
+        <div class="drop-sub" id="dec-drop-sub">PNG · BMP</div>
+      </div>
+      <div class="preview-row" id="dec-preview">
+        <div id="dec-thumb-wrap"></div>
+        <div class="img-meta" id="dec-meta"></div>
+      </div>
+    </div>
+
+    <!-- Password -->
+    <div class="card">
+      <div class="section-label">🔑 Нууц үг</div>
+      <div class="field-group">
+        <input type="password" id="dec-pw" placeholder="Encode хийхэд ашигласан password…">
+        <button class="eye-btn" onclick="togglePw('dec-pw')">👁</button>
+      </div>
+    </div>
+
+    <!-- Options -->
+    <div class="card" id="dec-opts-card">
+      <div class="section-label">⚙️ Тохиргоо</div>
+      <div id="dec-opts-content">
+        <div id="dec-opt-lsb" class="opt-row">
+          <label class="check-label">
+            <input type="checkbox" id="dec-rand" onchange="toggleSeed('dec-rand','dec-seed-row')">
+            <span class="custom-check"></span>
+            Random embedding (encode-д ашигласан бол)
+          </label>
+          <div class="seed-row" id="dec-seed-row">
+            <span>Seed:</span>
+            <input type="number" id="dec-seed" value="42">
+          </div>
+        </div>
+        <div id="dec-opt-jpeg" style="display:none">
+          <div class="method-info">📸 JPEG DCT коэффициент уншиж байна. Encode хийснийхтэй ижил файлыг ашиглана уу.</div>
+        </div>
+        <div id="dec-opt-archive" style="display:none">
+          <div class="method-info" id="dec-method-info">ℹ️ ZIP comment талбараас өгөгдлийг уншиж байна</div>
+        </div>
+        <div id="dec-opt-video" style="display:none">
+          <div class="method-info">🎬 Видеоны аудио track PCM sample-аас LSB уншиж байна. Encode хийсэн MKV файлыг ашиглана уу.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action -->
+    <div class="btn-row">
+      <button class="btn btn-primary" id="dec-btn" onclick="doDecode()">🔓 Decode</button>
+      <button class="btn btn-ghost" onclick="clearDecode()">Цэвэрлэх</button>
+    </div>
+
+    <!-- Result -->
+    <div class="card" id="dec-result-card" style="margin-top:20px; display:none">
+      <div class="section-label">📤 Үр дүн</div>
+      <div class="result-box" id="dec-result"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-ghost" onclick="copyResult()" style="font-size:12px; padding:8px 16px">
+          📋 Хуулах
+        </button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<div id="statusbar">
+  <div class="dot" id="sb-dot"></div>
+  <span id="sb-msg">Бэлэн</span>
+  <span style="margin-left:auto; opacity:.4">StegoCrypt v3.1 · AES-256-GCM + LSB/DCT/ZIP/TAR/VIDEO</span>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let encFile = null, decFile = null;
+let encCapBytes = 0;
+let dlFilename  = null;
+let currentFmt  = 'png';
+
+// Format configs
+const FMT = {
+  png:  {
+    accept: 'image/png,image/bmp',
+    encLabel: 'PNG/BMP зураг', decLabel: 'PNG/BMP stego зураг',
+    encIcon: '🖼️', decIcon: '🔍',
+    encTitle: 'PNG/BMP зураг чирж тавих / дарж сонгох',
+    decTitle: 'Нууц мэдээлэл агуулсан PNG/BMP зурагийг оруулна уу',
+    encSub: 'PNG · BMP  •  Гаралт нь PNG форматтай',
+    decSub: 'PNG · BMP',
+    isImage: true,
+  },
+  jpeg: {
+    accept: 'image/jpeg,image/jpg',
+    encLabel: 'JPEG зураг', decLabel: 'JPEG stego зураг',
+    encIcon: '📸', decIcon: '🔍',
+    encTitle: 'JPEG зураг чирж тавих / дарж сонгох',
+    decTitle: 'Нууц мэдээлэл агуулсан JPEG зурагийг оруулна уу',
+    encSub: 'JPG · JPEG  •  DCT коэффициентэд нуух болно',
+    decSub: 'JPG · JPEG',
+    isImage: true,
+  },
+  zip: {
+    accept: '.zip',
+    encLabel: 'ZIP архив', decLabel: 'ZIP stego архив',
+    encIcon: '🗜️', decIcon: '🗜️',
+    encTitle: 'ZIP файл чирж тавих / дарж сонгох',
+    decTitle: 'Нууц мэдээлэл агуулсан ZIP файлыг оруулна уу',
+    encSub: '.zip  •  Comment талбарт нуух болно',
+    decSub: '.zip',
+    isImage: false,
+  },
+  tar: {
+    accept: '.tar,.tar.gz,.tgz',
+    encLabel: 'TAR архив', decLabel: 'TAR stego архив',
+    encIcon: '📦', decIcon: '📦',
+    encTitle: 'TAR файл чирж тавих / дарж сонгох',
+    decTitle: 'Нууц мэдээлэл агуулсан TAR файлыг оруулна уу',
+    encSub: '.tar · .tar.gz · .tgz  •  PAX header-т нуух болно',
+    decSub: '.tar · .tar.gz',
+    isImage: false,
+  },
+  video: {
+    accept: 'video/*,.mp4,.mkv,.avi,.mov,.webm',
+    encLabel: 'Видео файл', decLabel: 'Stego видео файл',
+    encIcon: '🎬', decIcon: '🎬',
+    encTitle: 'Видео файл чирж тавих / дарж сонгох',
+    decTitle: 'Нууц мэдээлэл агуулсан видеог оруулна уу',
+    encSub: 'MP4 · MKV · AVI · MOV  •  Аудио track дуу бүхий байх шаардлагатай  •  Гаралт MKV',
+    decSub: 'MKV · MP4 · AVI (encode хийсэн файл)',
+    isImage: false,
+  },
+};
+
+// ── Format select ─────────────────────────────────────────────────────────────
+function selectFormat(fmt) {
+  currentFmt = fmt;
+  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('fmt-' + fmt).classList.add('active');
+
+  const cfg = FMT[fmt];
+
+  // Update dropzones
+  ['enc','dec'].forEach(p => {
+    const inputEl = document.getElementById(p+'-file');
+    inputEl.accept = cfg.accept;
+    document.getElementById(p+'-drop-icon').textContent  = p==='enc' ? cfg.encIcon : cfg.decIcon;
+    document.getElementById(p+'-drop-title').textContent = p==='enc' ? cfg.encTitle : cfg.decTitle;
+    document.getElementById(p+'-drop-sub').textContent   = p==='enc' ? cfg.encSub  : cfg.decSub;
+    document.getElementById(p+'-file-label').textContent = p==='enc' ? cfg.encLabel : cfg.decLabel;
+    // Clear previous selection
+    clearFiles(p);
+  });
+
+  // Update options visibility
+  const isLSB    = fmt === 'png';
+  const isJPEG   = fmt === 'jpeg';
+  const isArchive= fmt === 'zip' || fmt === 'tar';
+  const isVideo  = fmt === 'video';
+
+  document.getElementById('enc-opt-lsb').style.display     = isLSB     ? '' : 'none';
+  document.getElementById('enc-opt-jpeg').style.display    = isJPEG    ? '' : 'none';
+  document.getElementById('enc-opt-archive').style.display = isArchive  ? '' : 'none';
+  document.getElementById('enc-opt-video').style.display   = isVideo    ? '' : 'none';
+  document.getElementById('dec-opt-lsb').style.display     = isLSB     ? '' : 'none';
+  document.getElementById('dec-opt-jpeg').style.display    = isJPEG    ? '' : 'none';
+  document.getElementById('dec-opt-archive').style.display = isArchive  ? '' : 'none';
+  document.getElementById('dec-opt-video').style.display   = isVideo    ? '' : 'none';
+
+  if (fmt === 'zip') {
+    document.getElementById('enc-method-info').textContent = 'ℹ️ ZIP End-of-Central-Directory comment талбарт AES-256 шифрлэсэн өгөгдлийг нуух болно';
+    document.getElementById('dec-method-info').textContent = 'ℹ️ ZIP comment талбараас өгөгдлийг уншиж байна';
+  } else if (fmt === 'tar') {
+    document.getElementById('enc-method-info').textContent = 'ℹ️ TAR PAX extension header-т AES-256 шифрлэсэн өгөгдлийг нуух болно';
+    document.getElementById('dec-method-info').textContent = 'ℹ️ TAR PAX header-аас өгөгдлийг уншиж байна';
+  }
+
+  setStatus('Формат: ' + fmt.toUpperCase(), 'accent');
+}
+
+function clearFiles(prefix) {
+  if (prefix === 'enc') { encFile = null; encCapBytes = 0; }
+  else { decFile = null; }
+  document.getElementById(prefix+'-file').value = '';
+  document.getElementById(prefix+'-preview').classList.remove('show');
+  document.getElementById(prefix+'-thumb-wrap').innerHTML = '';
+  if (document.getElementById(prefix+'-meta'))
+    document.getElementById(prefix+'-meta').innerHTML = '';
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) =>
+    b.classList.toggle('active', (i===0) === (tab==='encode'))
+  );
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  setStatus('Бэлэн', 'muted');
+}
+
+// ── Status bar ───────────────────────────────────────────────────────────────
+function setStatus(msg, type='muted') {
+  document.getElementById('sb-msg').textContent = msg;
+  const dot = document.getElementById('sb-dot');
+  const colors = { muted:'#64748B', green:'#06D6A0', red:'#EF233C', amber:'#FFB703', accent:'#4ECDC4' };
+  dot.style.background = colors[type] || colors.muted;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='info', duration=3500) {
+  const icons = { success:'✓', error:'✗', info:'◈', warn:'⚠' };
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.innerHTML = `<span>${icons[type]||'◈'}</span><span>${msg}</span>`;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0'; el.style.transition = 'opacity .3s';
+    setTimeout(() => el.remove(), 300);
+  }, duration);
+}
+
+// ── Drop zones ────────────────────────────────────────────────────────────────
+['enc-drop','dec-drop'].forEach(id => {
+  const zone = document.getElementById(id);
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      if (id === 'enc-drop') handleEncFile(f);
+      else handleDecFile(f);
+    }
+  });
+});
+
+document.getElementById('enc-file').addEventListener('change', e => { if (e.target.files[0]) handleEncFile(e.target.files[0]); });
+document.getElementById('dec-file').addEventListener('change', e => { if (e.target.files[0]) handleDecFile(e.target.files[0]); });
+
+// ── Encode file ───────────────────────────────────────────────────────────────
+async function handleEncFile(file) {
+  encFile = file;
+  const cfg = FMT[currentFmt];
+  const wrap = document.getElementById('enc-thumb-wrap');
+
+  if (cfg.isImage) {
+    const img = document.createElement('img');
+    img.className = 'thumb';
+    img.src = URL.createObjectURL(file);
+    wrap.innerHTML = '';
+    wrap.appendChild(img);
+  } else {
+    wrap.innerHTML = `<div class="file-icon-large">${cfg.encIcon}</div>`;
+  }
+  document.getElementById('enc-preview').classList.add('show');
+
+  // Fetch capacity
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('type', currentFmt);
+  try {
+    const r = await fetch('/api/capacity', { method:'POST', body: fd });
+    const d = await r.json();
+    if (d.capacity_bytes) {
+      encCapBytes = d.capacity_bytes;
+      let meta = `💾 ~${(d.capacity_bytes/1024).toFixed(1)} KB багтаамж<br>🔧 ${d.method}`;
+      if (d.width) meta = `📐 ${d.width}×${d.height} px<br>` + meta;
+      if (d.files != null) meta = `📂 ${d.files} файл агуулна<br>` + meta;
+      if (d.duration) meta = `⏱ ${d.duration}с · ${d.sample_rate}Hz · ${d.channels}ch<br>` + meta;
+      document.getElementById('enc-meta').innerHTML = meta;
+      updateCapBar();
+    }
+  } catch(_) {}
+}
+
+function handleDecFile(file) {
+  decFile = file;
+  const cfg = FMT[currentFmt];
+  const wrap = document.getElementById('dec-thumb-wrap');
+
+  if (cfg.isImage) {
+    const img = document.createElement('img');
+    img.className = 'thumb';
+    img.src = URL.createObjectURL(file);
+    wrap.innerHTML = '';
+    wrap.appendChild(img);
+    const imgEl = new window.Image();
+    imgEl.onload = () => {
+      document.getElementById('dec-meta').innerHTML = `📐 ${imgEl.naturalWidth}×${imgEl.naturalHeight} px`;
+    };
+    imgEl.src = img.src;
+  } else {
+    wrap.innerHTML = `<div class="file-icon-large">${cfg.decIcon}</div>`;
+    document.getElementById('dec-meta').innerHTML = `📁 ${(file.size/1024).toFixed(1)} KB`;
+  }
+  document.getElementById('dec-preview').classList.add('show');
+}
+
+// ── Cap bar ───────────────────────────────────────────────────────────────────
+document.getElementById('enc-msg').addEventListener('input', updateCapBar);
+
+function updateCapBar() {
+  const txt   = document.getElementById('enc-msg').value;
+  document.getElementById('enc-chars').textContent = txt.length;
+  if (!encCapBytes) return;
+  const pct  = Math.min(Math.round(txt.length / encCapBytes * 100), 100);
+  const bar  = document.getElementById('enc-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = pct < 50 ? '#06D6A0' : pct < 80 ? '#FFB703' : '#EF233C';
+  document.getElementById('enc-pct').textContent = pct + '%';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function togglePw(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+function toggleSeed(checkId, rowId) {
+  document.getElementById(rowId).classList.toggle('show', document.getElementById(checkId).checked);
+}
+
+// ── Encode ────────────────────────────────────────────────────────────────────
+async function doEncode() {
+  if (!encFile) return toast(FMT[currentFmt].encLabel + ' сонгоно уу.', 'error');
+  const pw  = document.getElementById('enc-pw').value.trim();
+  const msg = document.getElementById('enc-msg').value.trim();
+  if (!pw)  return toast('Password оруулна уу.', 'error');
+  if (!msg) return toast('Нууц текст хоосон байна.', 'error');
+
+  const btn = document.getElementById('enc-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span>Encode хийж байна…';
+  setStatus('Encode хийж байна…', 'amber');
+  document.getElementById('enc-dl').classList.remove('show');
+
+  const fd = new FormData();
+  fd.append('file',     encFile);
+  fd.append('secret',   msg);
+  fd.append('password', pw);
+  fd.append('type',     currentFmt);
+  fd.append('random',   document.getElementById('enc-rand').checked);
+  fd.append('seed',     document.getElementById('enc-seed').value);
+  fd.append('quality',  document.getElementById('enc-quality').value);
+
+  try {
+    const r = await fetch('/api/encode', { method:'POST', body: fd });
+    const d = await r.json();
+    if (d.success) {
+      dlFilename = d.filename;
+      const info = d.info;
+      let infoHtml = `✓ Амжилттай  ·  ${info.method}  ·  ${info.chars} тэмдэгт нуугдсан`;
+      if (info.used_pct != null) infoHtml += `<br>${info.bits_used?.toLocaleString() ?? ''} бит ашигласан  ·  ${info.used_pct}%`;
+      if (info.files_in_zip != null) infoHtml += `<br>ZIP дотор ${info.files_in_zip} файл`;
+      if (info.files_in_tar != null) infoHtml += `<br>TAR дотор ${info.files_in_tar} файл`;
+      document.getElementById('enc-dl-info').innerHTML = infoHtml;
+      document.getElementById('enc-dl-btn').onclick = () => window.location = '/api/download/' + dlFilename;
+      document.getElementById('enc-dl').classList.add('show');
+      setStatus(`✓ Encode амжилттай · ${info.method}`, 'green');
+      toast('Stego файл бэлэн боллоо!', 'success');
+    } else {
+      toast(d.error || 'Алдаа гарлаа', 'error');
+      setStatus('Алдаа', 'red');
+    }
+  } catch(e) {
+    toast('Сервертэй холбогдоход алдаа гарлаа', 'error');
+    setStatus('Алдаа', 'red');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔒 Encode';
+  }
+}
+
+// ── Decode ────────────────────────────────────────────────────────────────────
+async function doDecode() {
+  if (!decFile) return toast(FMT[currentFmt].decLabel + ' сонгоно уу.', 'error');
+  const pw = document.getElementById('dec-pw').value.trim();
+  if (!pw) return toast('Password оруулна уу.', 'error');
+
+  const btn = document.getElementById('dec-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span>Decode хийж байна…';
+  setStatus('Decode хийж байна…', 'amber');
+  document.getElementById('dec-result-card').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('file',     decFile);
+  fd.append('password', pw);
+  fd.append('type',     currentFmt);
+  fd.append('random',   document.getElementById('dec-rand').checked);
+  fd.append('seed',     document.getElementById('dec-seed').value);
+
+  try {
+    const r = await fetch('/api/decode', { method:'POST', body: fd });
+    const d = await r.json();
+    if (d.success) {
+      document.getElementById('dec-result').textContent = d.secret;
+      document.getElementById('dec-result-card').style.display = 'block';
+      setStatus(`✓ Decode амжилттай · ${d.chars} тэмдэгт`, 'green');
+      toast(`Нууц мэдээлэл гарлаа (${d.chars} тэмдэгт)`, 'success');
+    } else {
+      toast(d.error || 'Алдаа гарлаа', 'error');
+      setStatus(d.error || 'Алдаа', 'red');
+    }
+  } catch(e) {
+    toast('Сервертэй холбогдоход алдаа гарлаа', 'error');
+    setStatus('Алдаа', 'red');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔓 Decode';
+  }
+}
+
+// ── Copy ──────────────────────────────────────────────────────────────────────
+function copyResult() {
+  const txt = document.getElementById('dec-result').textContent;
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(() => {
+    toast('Clipboard-д хуулагдлаа ✓', 'success');
+  });
+}
+
+// ── Clear ─────────────────────────────────────────────────────────────────────
+function clearEncode() {
+  clearFiles('enc');
+  document.getElementById('enc-pw').value = '';
+  document.getElementById('enc-msg').value = '';
+  document.getElementById('enc-dl').classList.remove('show');
+  document.getElementById('enc-bar').style.width = '0%';
+  document.getElementById('enc-pct').textContent = '0%';
+  document.getElementById('enc-chars').textContent = '0';
+  setStatus('Цэвэрлэгдлээ', 'muted');
+}
+
+function clearDecode() {
+  clearFiles('dec');
+  document.getElementById('dec-pw').value = '';
+  document.getElementById('dec-result-card').style.display = 'none';
+  setStatus('Цэвэрлэгдлээ', 'muted');
+}
+</script>
+
+</body>
+</html>
